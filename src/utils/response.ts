@@ -9,20 +9,3 @@ export function success<T>(res: Response, data: T, statusCode = 200): Response<A
     timestamp: nowTimestamp(),
   });
 }
-
-export function error(
-  res: Response,
-  message: string,
-  statusCode = 500,
-  details?: unknown,
-): Response<ApiResponse<never>> {
-  return res.status(statusCode).json({
-    success: false,
-    error: {
-      code: statusCode,
-      message,
-      details,
-    },
-    timestamp: nowTimestamp(),
-  });
-}

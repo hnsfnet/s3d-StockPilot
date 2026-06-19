@@ -98,10 +98,21 @@ export interface ApiErrorResponse {
   timestamp: string;
 }
 
+export interface ApiBusinessErrorResponse {
+  success: false;
+  error: {
+    code: number;
+    bizCode: number;
+    message: string;
+    details?: unknown;
+  };
+  timestamp: string;
+}
+
 export interface ApiSuccessResponse<T> {
   success: true;
   data: T;
   timestamp: string;
 }
 
-export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
+export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse | ApiBusinessErrorResponse;

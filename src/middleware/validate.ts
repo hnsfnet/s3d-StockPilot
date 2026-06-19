@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { error } from '../utils/response';
+import { BusinessError } from '../errors/BusinessError';
+import { ErrorCodes } from '../errors/codes';
 
-export function validateCreateProduct(req: Request, res: Response, next: NextFunction): void {
+export function validateCreateProduct(req: Request, _res: Response, next: NextFunction): void {
   const { sku, name, category, price, safetyThreshold } = req.body;
   const errors: string[] = [];
 
@@ -24,14 +25,14 @@ export function validateCreateProduct(req: Request, res: Response, next: NextFun
   }
 
   if (errors.length > 0) {
-    error(res, 'Validation failed', 400, errors);
+    next(new BusinessError('Validation failed', ErrorCodes.VALIDATION_ERROR, 400, errors));
     return;
   }
 
   next();
 }
 
-export function validateUpdateProduct(req: Request, res: Response, next: NextFunction): void {
+export function validateUpdateProduct(req: Request, _res: Response, next: NextFunction): void {
   const { sku, name, category, price, safetyThreshold } = req.body;
   const errors: string[] = [];
 
@@ -54,7 +55,7 @@ export function validateUpdateProduct(req: Request, res: Response, next: NextFun
   }
 
   if (errors.length > 0) {
-    error(res, 'Validation failed', 400, errors);
+    next(new BusinessError('Validation failed', ErrorCodes.VALIDATION_ERROR, 400, errors));
     return;
   }
 
@@ -63,7 +64,7 @@ export function validateUpdateProduct(req: Request, res: Response, next: NextFun
 
 export function validateSetSafetyThreshold(
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction,
 ): void {
   const { safetyThreshold } = req.body;
@@ -74,14 +75,14 @@ export function validateSetSafetyThreshold(
   }
 
   if (errors.length > 0) {
-    error(res, 'Validation failed', 400, errors);
+    next(new BusinessError('Validation failed', ErrorCodes.VALIDATION_ERROR, 400, errors));
     return;
   }
 
   next();
 }
 
-export function validateStockOperation(req: Request, res: Response, next: NextFunction): void {
+export function validateStockOperation(req: Request, _res: Response, next: NextFunction): void {
   const { quantity, remark } = req.body;
   const errors: string[] = [];
 
@@ -93,14 +94,14 @@ export function validateStockOperation(req: Request, res: Response, next: NextFu
   }
 
   if (errors.length > 0) {
-    error(res, 'Validation failed', 400, errors);
+    next(new BusinessError('Validation failed', ErrorCodes.VALIDATION_ERROR, 400, errors));
     return;
   }
 
   next();
 }
 
-export function validateCreateStocktake(req: Request, res: Response, next: NextFunction): void {
+export function validateCreateStocktake(req: Request, _res: Response, next: NextFunction): void {
   const { category, remark } = req.body;
   const errors: string[] = [];
 
@@ -112,14 +113,14 @@ export function validateCreateStocktake(req: Request, res: Response, next: NextF
   }
 
   if (errors.length > 0) {
-    error(res, 'Validation failed', 400, errors);
+    next(new BusinessError('Validation failed', ErrorCodes.VALIDATION_ERROR, 400, errors));
     return;
   }
 
   next();
 }
 
-export function validateStocktakeAction(req: Request, res: Response, next: NextFunction): void {
+export function validateStocktakeAction(req: Request, _res: Response, next: NextFunction): void {
   const { remark } = req.body;
   const errors: string[] = [];
 
@@ -128,7 +129,7 @@ export function validateStocktakeAction(req: Request, res: Response, next: NextF
   }
 
   if (errors.length > 0) {
-    error(res, 'Validation failed', 400, errors);
+    next(new BusinessError('Validation failed', ErrorCodes.VALIDATION_ERROR, 400, errors));
     return;
   }
 

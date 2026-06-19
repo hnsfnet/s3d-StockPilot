@@ -1,20 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
-import { error } from '../utils/response';
-
-export class AppError extends Error {
-  public readonly statusCode: number;
-  public readonly details?: unknown;
-
-  constructor(message: string, statusCode = 500, details?: unknown) {
-    super(message);
-    this.name = 'AppError';
-    this.statusCode = statusCode;
-    this.details = details;
-  }
-}
+import { BusinessError } from '../errors/BusinessError';
+import { ErrorCodes } from '../errors/codes';
+import { nowTimestamp } from '../utils/time';
 
 export function notFoundHandler(_req: Request, _res: Response, next: NextFunction): void {
-  next(new AppError('Resource not found', 404));
+  next(
+    new BusinessError('Resource not found', ErrorCodes.NOT_FOUND, 404),
+  );
 }
 
 export function errorHandler(
@@ -23,15 +15,42 @@ export function errorHandler(
   res: Response,
   _next: NextFunction,
 ): void {
-  if (err instanceof AppError) {
-    error(res, err.message, err.statusCode, err.details);
+  const timestamp = nowTimestamp();
+
+  if (err instanceof BusinessError) {
+    res.status(err.statusCode).json({
+      success: false,
+      error: {
+        code: err.statusCode,
+        bizCode: err.code,
+        message: err.message,
+        details: err.details,
+      },
+      timestamp,
+    });
     return;
   }
 
   if (err.name === 'SyntaxError') {
-    error(res, 'Invalid JSON payload', 400);
+    res.status(400).json({
+      success: false,
+      error: {
+        code: 400,
+        bizCode: ErrorCodes.BAD_REQUEST,
+        message: 'Invalid JSON payload',
+      },
+      timestamp,
+    });
     return;
   }
 
-  error(res, 'Internal server error', 500);
+  res.status(500).json({
+    success: false,
+    error: {
+      code: 500,
+      bizCode: ErrorCodes.INTERNAL_ERROR,
+      message: 'Internal server error',
+    },
+    timestamp,
+  });
 }
