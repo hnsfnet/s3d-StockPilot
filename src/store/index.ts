@@ -217,6 +217,16 @@ class InMemoryStore {
       release();
     }
   }
+
+  reset(): void {
+    this.products.clear();
+    this.stock.clear();
+    this.stockChanges = [];
+    this.skuIndex.clear();
+    this.stocktakes.clear();
+    this.lockedCategories.clear();
+    this.stockLocks.clear();
+  }
 }
 
 export const store = new InMemoryStore();
