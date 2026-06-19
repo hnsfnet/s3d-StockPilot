@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { store } from '../store';
 import { success } from '../utils/response';
-import { generateId } from '../utils/id';
 import { AppError } from '../middleware/errorHandler';
 import { StockOperationDTO } from '../types';
 
@@ -60,31 +59,19 @@ export async function stockIn(
 
     assertCategoryUnlocked(product.category, 'perform stock-in for');
 
-    const current = store.getStock(productId) ?? 0;
-    const newQuantity = current + quantity;
-    store.setStock(productId, newQuantity);
-
-    const change = {
-      id: generateId(),
-      productId,
-      quantity,
-      type: 'in' as const,
-      timestamp: new Date().toISOString(),
-      remark,
-    };
-    store.addStockChange(change);
+    const result = await store.adjustStock(productId, quantity, 'in', remark);
 
     const warningStatus: 'normal' | 'warning' =
-      newQuantity < product.safetyThreshold ? 'warning' : 'normal';
+      result.newQuantity < product.safetyThreshold ? 'warning' : 'normal';
 
     success(
       res,
       {
         productId,
-        quantity: newQuantity,
+        quantity: result.newQuantity,
         safetyThreshold: product.safetyThreshold,
         warningStatus,
-        change,
+        change: result.change,
       },
       201,
     );
@@ -109,38 +96,32 @@ export async function stockOut(
 
     assertCategoryUnlocked(product.category, 'perform stock-out for');
 
-    const current = store.getStock(productId) ?? 0;
-    if (quantity > current) {
-      throw new AppError(
-        `Insufficient stock. Current: ${current}, requested: ${quantity}`,
-        400,
-      );
+    let result;
+    try {
+      result = await store.adjustStock(productId, quantity, 'out', remark);
+    } catch (err) {
+      if (err instanceof Error && (err as Error & { code?: string }).code === 'INSUFFICIENT_STOCK') {
+        const e = err as Error & { current?: number; requested?: number };
+        throw new AppError(
+          `Insufficient stock. Current: ${e.current ?? 0}, requested: ${e.requested ?? quantity}`,
+          400,
+          { current: e.current, requested: e.requested },
+        );
+      }
+      throw err;
     }
 
-    const newQuantity = current - quantity;
-    store.setStock(productId, newQuantity);
-
-    const change = {
-      id: generateId(),
-      productId,
-      quantity,
-      type: 'out' as const,
-      timestamp: new Date().toISOString(),
-      remark,
-    };
-    store.addStockChange(change);
-
     const warningStatus: 'normal' | 'warning' =
-      newQuantity < product.safetyThreshold ? 'warning' : 'normal';
+      result.newQuantity < product.safetyThreshold ? 'warning' : 'normal';
 
     success(
       res,
       {
         productId,
-        quantity: newQuantity,
+        quantity: result.newQuantity,
         safetyThreshold: product.safetyThreshold,
         warningStatus,
-        change,
+        change: result.change,
       },
       201,
     );

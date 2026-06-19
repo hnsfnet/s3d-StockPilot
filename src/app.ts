@@ -4,6 +4,7 @@ import { productRouter } from './routes/productRoutes';
 import { stockRouter } from './routes/stockRoutes';
 import { stocktakeRouter } from './routes/stocktakeRoutes';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
+import { nowTimestamp } from './utils/time';
 
 const app = express();
 
@@ -13,7 +14,7 @@ app.use(express.json());
 app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
-    timestamp: new Date().toISOString(),
+    timestamp: nowTimestamp(),
   });
 });
 

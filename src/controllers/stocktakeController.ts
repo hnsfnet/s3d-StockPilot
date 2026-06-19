@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { store } from '../store';
 import { success } from '../utils/response';
 import { generateId } from '../utils/id';
+import { nowTimestamp } from '../utils/time';
 import { AppError } from '../middleware/errorHandler';
 import {
   CreateStocktakeDTO,
@@ -69,7 +70,7 @@ export async function createStocktake(
 
     const items = buildStocktakeItems(trimmedCategory);
     const summary = summarizeStocktake(items);
-    const now = new Date().toISOString();
+    const now = nowTimestamp();
 
     const stocktakeId = generateId();
     const stocktake: Stocktake = {
@@ -165,7 +166,7 @@ export async function completeStocktake(
       ...stocktake,
       status: 'completed',
       remark: remark ?? stocktake.remark,
-      completedAt: new Date().toISOString(),
+      completedAt: nowTimestamp(),
     };
 
     store.unlockCategory(stocktake.category);
@@ -203,7 +204,7 @@ export async function cancelStocktake(
       ...stocktake,
       status: 'cancelled',
       remark: remark ?? stocktake.remark,
-      cancelledAt: new Date().toISOString(),
+      cancelledAt: nowTimestamp(),
     };
 
     store.unlockCategory(stocktake.category);

@@ -1,4 +1,12 @@
 import { Product, StockChange, Stocktake, ProductWithWarning } from '../types';
+import { nowTimestamp } from '../utils/time';
+import { generateId } from '../utils/id';
+
+export interface StockAdjustmentResult {
+  previousQuantity: number;
+  newQuantity: number;
+  change: StockChange;
+}
 
 class InMemoryStore {
   private products: Map<string, Product> = new Map();
@@ -8,6 +16,24 @@ class InMemoryStore {
 
   private stocktakes: Map<string, Stocktake> = new Map();
   private lockedCategories: Map<string, string> = new Map();
+
+  private stockLocks: Map<string, Promise<void>> = new Map();
+
+  private async acquireStockLock(productId: string): Promise<() => void> {
+    const prev = this.stockLocks.get(productId) ?? Promise.resolve();
+    let release!: () => void;
+    const next = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    this.stockLocks.set(productId, prev.then(() => next));
+    await prev;
+    return () => {
+      release();
+      if (this.stockLocks.get(productId) === next) {
+        this.stockLocks.delete(productId);
+      }
+    };
+  }
 
   addProduct(product: Product): void {
     this.products.set(product.id, product);
@@ -70,6 +96,7 @@ class InMemoryStore {
     this.skuIndex.delete(product.sku);
     this.stock.delete(id);
     this.stockChanges = this.stockChanges.filter(c => c.productId !== id);
+    this.stockLocks.delete(id);
     return true;
   }
 
@@ -79,6 +106,10 @@ class InMemoryStore {
 
   setStock(productId: string, quantity: number): void {
     this.stock.set(productId, quantity);
+  }
+
+  private addStockChangeInternal(change: StockChange): void {
+    this.stockChanges.push(change);
   }
 
   addStockChange(change: StockChange): void {
@@ -143,6 +174,48 @@ class InMemoryStore {
 
   updateStocktake(id: string, stocktake: Stocktake): void {
     this.stocktakes.set(id, stocktake);
+  }
+
+  async adjustStock(
+    productId: string,
+    delta: number,
+    type: 'in' | 'out',
+    remark?: string,
+  ): Promise<StockAdjustmentResult> {
+    if (!Number.isInteger(delta) || delta <= 0) {
+      throw new Error('delta must be a positive integer');
+    }
+
+    const release = await this.acquireStockLock(productId);
+    try {
+      const previousQuantity = this.stock.get(productId) ?? 0;
+      if (type === 'out' && delta > previousQuantity) {
+        const error: Error & { code?: string; current?: number; requested?: number } = new Error(
+          `Insufficient stock. Current: ${previousQuantity}, requested: ${delta}`,
+        );
+        error.code = 'INSUFFICIENT_STOCK';
+        error.current = previousQuantity;
+        error.requested = delta;
+        throw error;
+      }
+
+      const newQuantity = type === 'in' ? previousQuantity + delta : previousQuantity - delta;
+      this.stock.set(productId, newQuantity);
+
+      const change: StockChange = {
+        id: generateId(),
+        productId,
+        quantity: delta,
+        type,
+        timestamp: nowTimestamp(),
+        remark,
+      };
+      this.addStockChangeInternal(change);
+
+      return { previousQuantity, newQuantity, change };
+    } finally {
+      release();
+    }
   }
 }
 

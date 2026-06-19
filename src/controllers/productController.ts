@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { store } from '../store';
 import { success } from '../utils/response';
 import { generateId } from '../utils/id';
+import { nowTimestamp } from '../utils/time';
 import { AppError } from '../middleware/errorHandler';
 import { CreateProductDTO, UpdateProductDTO, SetSafetyThresholdDTO } from '../types';
 
@@ -30,7 +31,7 @@ export async function createProduct(
 
     assertCategoryUnlocked(category, 'create');
 
-    const now = new Date().toISOString();
+    const now = nowTimestamp();
     const product = {
       id: generateId(),
       sku: sku.trim(),
@@ -151,7 +152,7 @@ export async function updateProduct(
       ...(body.category !== undefined && { category: body.category.trim() }),
       ...(body.price !== undefined && { price: body.price }),
       ...(body.safetyThreshold !== undefined && { safetyThreshold: body.safetyThreshold }),
-      updatedAt: new Date().toISOString(),
+      updatedAt: nowTimestamp(),
     };
 
     store.updateProduct(id, updated);
@@ -180,7 +181,7 @@ export async function setSafetyThreshold(
     const updated = {
       ...existing,
       safetyThreshold,
-      updatedAt: new Date().toISOString(),
+      updatedAt: nowTimestamp(),
     };
 
     store.updateProduct(id, updated);
