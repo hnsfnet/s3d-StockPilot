@@ -1,10 +1,13 @@
-import { Product, StockChange } from '../types';
+import { Product, StockChange, Stocktake, ProductWithWarning } from '../types';
 
 class InMemoryStore {
   private products: Map<string, Product> = new Map();
   private stock: Map<string, number> = new Map();
   private stockChanges: StockChange[] = [];
   private skuIndex: Map<string, string> = new Map();
+
+  private stocktakes: Map<string, Stocktake> = new Map();
+  private lockedCategories: Map<string, string> = new Map();
 
   addProduct(product: Product): void {
     this.products.set(product.id, product);
@@ -25,6 +28,30 @@ class InMemoryStore {
 
   getAllProducts(): Product[] {
     return Array.from(this.products.values());
+  }
+
+  getProductsByCategory(category: string): Product[] {
+    const target = category.trim().toLowerCase();
+    return this.getAllProducts().filter(
+      p => p.category.toLowerCase() === target,
+    );
+  }
+
+  enrichProductWithWarning(product: Product): ProductWithWarning {
+    const quantity = this.getStock(product.id) ?? 0;
+    return {
+      ...product,
+      stockQuantity: quantity,
+      warningStatus: quantity < product.safetyThreshold ? 'warning' : 'normal',
+    };
+  }
+
+  getAllProductsWithWarning(): ProductWithWarning[] {
+    return this.getAllProducts().map(p => this.enrichProductWithWarning(p));
+  }
+
+  getWarningProducts(): ProductWithWarning[] {
+    return this.getAllProductsWithWarning().filter(p => p.warningStatus === 'warning');
   }
 
   updateProduct(id: string, product: Product): void {
@@ -68,6 +95,54 @@ class InMemoryStore {
     const id = this.skuIndex.get(sku);
     if (!id) return false;
     return excludeId ? id !== excludeId : true;
+  }
+
+  isCategoryLocked(category: string): boolean {
+    return this.lockedCategories.has(category.trim().toLowerCase());
+  }
+
+  getLockingStocktakeId(category: string): string | undefined {
+    return this.lockedCategories.get(category.trim().toLowerCase());
+  }
+
+  lockCategory(category: string, stocktakeId: string): void {
+    this.lockedCategories.set(category.trim().toLowerCase(), stocktakeId);
+  }
+
+  unlockCategory(category: string): void {
+    this.lockedCategories.delete(category.trim().toLowerCase());
+  }
+
+  addStocktake(stocktake: Stocktake): void {
+    this.stocktakes.set(stocktake.id, stocktake);
+  }
+
+  getStocktakeById(id: string): Stocktake | undefined {
+    return this.stocktakes.get(id);
+  }
+
+  getAllStocktakes(): Stocktake[] {
+    return Array.from(this.stocktakes.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }
+
+  getStocktakesByCategory(category: string): Stocktake[] {
+    const target = category.trim().toLowerCase();
+    return this.getAllStocktakes().filter(
+      s => s.category.toLowerCase() === target,
+    );
+  }
+
+  getActiveStocktakeByCategory(category: string): Stocktake | undefined {
+    const target = category.trim().toLowerCase();
+    return this.getAllStocktakes().find(
+      s => s.category.toLowerCase() === target && s.status === 'in_progress',
+    );
+  }
+
+  updateStocktake(id: string, stocktake: Stocktake): void {
+    this.stocktakes.set(id, stocktake);
   }
 }
 

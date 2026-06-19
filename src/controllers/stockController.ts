@@ -5,6 +5,17 @@ import { generateId } from '../utils/id';
 import { AppError } from '../middleware/errorHandler';
 import { StockOperationDTO } from '../types';
 
+function assertCategoryUnlocked(category: string, action: string): void {
+  if (store.isCategoryLocked(category)) {
+    const stocktakeId = store.getLockingStocktakeId(category);
+    throw new AppError(
+      `Cannot ${action} stock: category "${category}" is locked by stocktake ${stocktakeId}`,
+      409,
+      { stocktakeId, category },
+    );
+  }
+}
+
 export async function getStock(
   req: Request,
   res: Response,
@@ -19,7 +30,15 @@ export async function getStock(
     }
 
     const quantity = store.getStock(productId) ?? 0;
-    success(res, { productId, quantity });
+    const warningStatus: 'normal' | 'warning' =
+      quantity < product.safetyThreshold ? 'warning' : 'normal';
+
+    success(res, {
+      productId,
+      quantity,
+      safetyThreshold: product.safetyThreshold,
+      warningStatus,
+    });
   } catch (err) {
     next(err);
   }
@@ -39,6 +58,8 @@ export async function stockIn(
       throw new AppError(`Product with id "${productId}" not found`, 404);
     }
 
+    assertCategoryUnlocked(product.category, 'perform stock-in for');
+
     const current = store.getStock(productId) ?? 0;
     const newQuantity = current + quantity;
     store.setStock(productId, newQuantity);
@@ -53,7 +74,20 @@ export async function stockIn(
     };
     store.addStockChange(change);
 
-    success(res, { productId, quantity: newQuantity, change }, 201);
+    const warningStatus: 'normal' | 'warning' =
+      newQuantity < product.safetyThreshold ? 'warning' : 'normal';
+
+    success(
+      res,
+      {
+        productId,
+        quantity: newQuantity,
+        safetyThreshold: product.safetyThreshold,
+        warningStatus,
+        change,
+      },
+      201,
+    );
   } catch (err) {
     next(err);
   }
@@ -72,6 +106,8 @@ export async function stockOut(
     if (!product) {
       throw new AppError(`Product with id "${productId}" not found`, 404);
     }
+
+    assertCategoryUnlocked(product.category, 'perform stock-out for');
 
     const current = store.getStock(productId) ?? 0;
     if (quantity > current) {
@@ -94,7 +130,20 @@ export async function stockOut(
     };
     store.addStockChange(change);
 
-    success(res, { productId, quantity: newQuantity, change }, 201);
+    const warningStatus: 'normal' | 'warning' =
+      newQuantity < product.safetyThreshold ? 'warning' : 'normal';
+
+    success(
+      res,
+      {
+        productId,
+        quantity: newQuantity,
+        safetyThreshold: product.safetyThreshold,
+        warningStatus,
+        change,
+      },
+      201,
+    );
   } catch (err) {
     next(err);
   }

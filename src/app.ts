@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { productRouter } from './routes/productRoutes';
 import { stockRouter } from './routes/stockRoutes';
+import { stocktakeRouter } from './routes/stocktakeRoutes';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler';
 
 const app = express();
@@ -18,6 +19,7 @@ app.get('/health', (_req, res) => {
 
 app.use('/api/products', productRouter);
 app.use('/api/stock', stockRouter);
+app.use('/api/stocktakes', stocktakeRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

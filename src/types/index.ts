@@ -4,8 +4,16 @@ export interface Product {
   name: string;
   category: string;
   price: number;
+  safetyThreshold: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export type StockWarningStatus = 'normal' | 'warning';
+
+export interface ProductWithWarning extends Product {
+  warningStatus: StockWarningStatus;
+  stockQuantity: number;
 }
 
 export type StockChangeType = 'in' | 'out';
@@ -24,6 +32,7 @@ export interface CreateProductDTO {
   name: string;
   category: string;
   price: number;
+  safetyThreshold?: number;
 }
 
 export interface UpdateProductDTO {
@@ -31,10 +40,51 @@ export interface UpdateProductDTO {
   name?: string;
   category?: string;
   price?: number;
+  safetyThreshold?: number;
+}
+
+export interface SetSafetyThresholdDTO {
+  safetyThreshold: number;
 }
 
 export interface StockOperationDTO {
   quantity: number;
+  remark?: string;
+}
+
+export type StocktakeStatus = 'in_progress' | 'completed' | 'cancelled';
+
+export interface StocktakeItem {
+  productId: string;
+  sku: string;
+  name: string;
+  category: string;
+  bookQuantity: number;
+  actualQuantity: number;
+  difference: number;
+}
+
+export interface Stocktake {
+  id: string;
+  category: string;
+  status: StocktakeStatus;
+  items: StocktakeItem[];
+  totalItems: number;
+  totalBookQuantity: number;
+  totalActualQuantity: number;
+  totalDifference: number;
+  remark?: string;
+  createdAt: string;
+  completedAt?: string;
+  cancelledAt?: string;
+}
+
+export interface CreateStocktakeDTO {
+  category: string;
+  remark?: string;
+}
+
+export interface StocktakeCompletionDTO {
   remark?: string;
 }
 
